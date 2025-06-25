@@ -1,7 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy React app to Azure Web App - TEST-REACTION-APP
+name: Build and deploy Node.js app to Azure Web App - TEST-REACTION-APP
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read
+      contents: read # Required for actions/checkout
 
     steps:
       - uses: actions/checkout@v4
@@ -23,30 +23,34 @@ jobs:
         with:
           node-version: '~22'
 
-      - name: Install dependencies and build React app
+      - name: npm install, build, and test
         run: |
           npm install
-          npm run build
+          npm run build --if-present
+          npm run test --if-present
 
       - name: Add web.config for React SPA support
         run: |
-          echo ^<?xml version="1.0" encoding="utf-8"?^>^
-          ^<configuration^>^
-            ^<system.webServer^>^
-              ^<rewrite^>^
-                ^<rules^>^
-                  ^<rule name="ReactRoutes" stopProcessing="true"^>^
-                    ^<match url=".*" /^>^
-                    ^<conditions logicalGrouping="MatchAll"^>^
-                      ^<add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" /^>^
-                      ^<add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" /^>^
-                    ^</conditions^>^
-                    ^<action type="Rewrite" url="/index.html" /^>^
-                  ^</rule^>^
-                ^</rules^>^
-              ^</rewrite^>^
-            ^</system.webServer^>^
-          ^</configuration^> > build/web.config
+          mkdir -p build
+          cat > build/web.config <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <rewrite>
+                <rules>
+                  <rule name="React Routes" stopProcessing="true">
+                    <match url=".*" />
+                    <conditions logicalGrouping="MatchAll">
+                      <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+                      <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+                    </conditions>
+                    <action type="Rewrite" url="/index.html" />
+                  </rule>
+                </rules>
+              </rewrite>
+            </system.webServer>
+          </configuration>
+          EOF
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -63,13 +67,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: react-app
-          path: .
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
         with:
           app-name: 'TEST-REACTION-APP'
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_70F8DED0CBC2455C981B495E3920C13B }}
+
