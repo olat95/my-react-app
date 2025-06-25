@@ -21,7 +21,7 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # Recommended for React apps (or keep ~22 if you're sure)
+          node-version: '~22'
 
       - name: Install dependencies and build React app
         run: |
